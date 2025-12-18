@@ -1,0 +1,9 @@
+{
+    "name": "Purgatorio Enemies",
+    "version_number": "1.0.0",
+    "website_url": "https://github.com/DoodleEh/PurgSpawnArm",
+    "description": "Adds enemies and bosses from Project Purgatorio to the Spawner Arm.",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2100",
+    ]
+}
