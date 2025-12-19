@@ -9,9 +9,11 @@ Adds enemies and bosses from Project Purgatorio to the Spawner Arm.
 
 * Bendya for creating and texturing Cravens and Neutralizers
 * TheLeabian and synth67 for designing Cravens and Neutralizers respectively
-* Lilaclav for designing, modelling, and texturing Hermes
+* Lilaclav for designing, modelling, and texturing Hermes, and designing Unfortunate Development
 * FruitCircuit for creating Cravens and Neutralizers mechanics
-* Slumbomb for creating Hermes mechanics
+* Slumbomb for creating Hermes mechanics and polishing Enoch mechanics
+* Raifu for creating Envy and modelling Enoch & Unfortunate Development
+* Hinestraza for reworking Unfortunate Development attacks
 * bongwaterfumes (me) for creating Indulgence and majorly polishing and balancing the enemies included in this pack
 * BlooGoober and Duv for some sounds and audio assistance
 
@@ -20,3 +22,15 @@ Adds enemies and bosses from Project Purgatorio to the Spawner Arm.
 ## Changelog
 * 1.0.0
   * Initial upload (this won't include Rubicon and Envy enemies for a little while)
+
+* 1.0.1
+  * Added Unfortunate Development boss
+  * Added Enoch, King Nothing boss
+    * Note: Unfortunate Development (and likely Enoch too) will be undergoing a rework eventually, so their current behaviour could be subject to change
+  * Added The Fattest Fuck secret boss
+  * Added Hermes Plushie
+  * Added Ash Skull/Altar
+
+  * Corrected Craven health bar name
+  * Fixed Craven spawn direction
+  * Made Carcass mod a dependency to properly include it in the roster, it's not actually required for the mod to function but it's a Purgatorio enemy so I'd suggest keeping it
