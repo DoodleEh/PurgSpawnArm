@@ -15,7 +15,6 @@ using UnityEngine.AddressableAssets;
 
 namespace PurgSpawnArm
 {
-
     [HarmonyPatch]
     [BepInPlugin(GUID, "Purg Spawn Arm", "1.0.0")]
 	[BepInDependency(PluginConfiguratorController.PLUGIN_GUID)]
