@@ -1,11 +1,16 @@
-﻿using HarmonyLib;
+﻿using BepInEx;
+using GameConsole.Commands;
+using HarmonyLib;
 using PurgatorioCyberGrind.Systems;
 using PurgSpawnArm;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using UnityEngine;
+using UnityEngine.AddressableAssets;
+using UnityEngine.ResourceManagement.AsyncOperations;
+using UnityEngine.UIElements.UIR;
 using static PurgatorioCyberGrind.Systems.CustomCyberGrindEntry;
 using static UnityEngine.UIElements.UIR.Implementation.UIRStylePainter;
 
@@ -70,15 +75,26 @@ namespace PurgatorioCyberGrind.Patches
 								}
 								else
 								{
-									entry.SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out GameObject prefab);
+									entry.SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out string spawnObjectName);
 									EndlessEnemy val = ScriptableObject.CreateInstance<EndlessEnemy>();
 									val.name = entry.GetType().Name + "EndlessData";
 									val.spawnCost = spawnCost;
 									val.spawnWave = spawnWave;
 									val.costIncreasePerSpawn = costIncreasePerSpawn;
 									val.enemyType = (EnemyType)i;
-									val.prefab = prefab;
-
+									val.prefab = Plugin.bundle.LoadAsset<GameObject>(spawnObjectName);
+									foreach (var spawnObject in Plugin.spawnableObjects)
+									{
+										if (spawnObject.spawnableObjectType == SpawnableObject.SpawnableObjectDataType.Enemy && spawnObject.name == spawnObjectName)
+										{
+											val.prefab = spawnObject.gameObject;
+											Vector3 pos = val.prefab.transform.position;
+											pos.y = spawnObject.spawnOffset;
+											val.prefab.transform.position = pos;
+											break;
+										}
+									}
+									
 									newEnemyEntry[j] = val;
 								}
 							}
@@ -102,39 +118,71 @@ namespace PurgatorioCyberGrind.Patches
 						}
 					}
 				}
-				//SpawnMenu.instance.CreateButtons(SpawnMenu.instance.objects.enemies, "ENEMIES");
 				//LogCybergrindEnemyEntries(___prefabs);
 			}
 		}
 
+		public static T Ass<T>(string path)
+		{
+			return Addressables.LoadAssetAsync<T>(path).WaitForCompletion();
+		}
+
 		//Caps uncommon enemies
 		[HarmonyPatch("CapUncommonsAmount"), HarmonyPostfix]
-		public static int EndlessGrid_CapUncommonsAmount(int target, int amount, EndlessGrid __instance, ref int __result)
+		public static void EndlessGrid_CapUncommonsAmount(int target, int amount, EndlessGrid __instance, ref int __result)
 		{
 			if (__instance.prefabs.uncommonEnemies[target].enemyType >= (EnemyType)totalVanillaEnemies)
 			{
-				return CybergrindEntryLoader.GetCustomEntry((int)__instance.prefabs.uncommonEnemies[target].enemyType).CapNonCommonEnemyAmount(__instance.currentWave, amount);
+				__result = CybergrindEntryLoader.GetCustomEntry((int)__instance.prefabs.uncommonEnemies[target].enemyType).CapNonCommonEnemyAmount(__instance.currentWave, amount);
 			}
-			return __result;
 		}
 
-		/// <summary>
-		/// Logs the current filled cybergrind entires, useful for whenever Hakita adds new enemies to the entries without needing to dig through the uk assets
-		/// </summary>
-		/// <param name="prefabs"></param>
-		private static void LogCybergrindEnemyEntries(PrefabDatabase prefabs)
+		//Prevents entiries from having radiance
+		[HarmonyPatch("SpawnRadiant"), HarmonyPostfix]
+		public static void EndlessGrid_SpawnRadiant(ref bool __result, EndlessEnemy target, int indexOf, EndlessGrid __instance)
 		{
-			BepInEx.Logging.ManualLogSource log = BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm");
+			if ((int)target.enemyType >= totalVanillaEnemies)
+			{
+				bool? canBeRadiant = CybergrindEntryLoader.GetCustomEntry((int)target.enemyType).CanBeRadiant(target, __instance.currentWave, __instance.spawnedEnemyTypes[indexOf].amount);
+				if (canBeRadiant != null)
+					__result = (bool)canBeRadiant;
+			}
+		}
 
-			log.Log(BepInEx.Logging.LogLevel.Info, "The following logs are each cybergrind type and their enemies listed");
-			for (int i = 0; i < prefabs.meleeEnemies.Length; i++)
-				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "melee " + i + " type: " + prefabs.meleeEnemies[i].enemyType);
-			for (int i = 0; i < prefabs.projectileEnemies.Length; i++)
-				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "projectile " + i + " type: " + prefabs.projectileEnemies[i].enemyType);
-			for (int i = 0; i < prefabs.uncommonEnemies.Length; i++)
-				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "uncommon " + i + " type: " + prefabs.uncommonEnemies[i].enemyType);
-			for (int i = 0; i < prefabs.specialEnemies.Length; i++)
-				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "special " + i + " type: " + prefabs.specialEnemies[i].enemyType);
+		[HarmonyPatch("SpawnUncommons"), HarmonyTranspiler]
+		private static IEnumerable<CodeInstruction> EndlessGrid_SpawnUncommons(IEnumerable<CodeInstruction> instructions)
+		{
+			CodeMatcher codeMatcher = new CodeMatcher(instructions);
+
+			codeMatcher
+				.Start()
+				.MatchForward(true,
+					new CodeMatch(OpCodes.Call, typeof(UnityEngine.Random).GetMethod(nameof(UnityEngine.Random.Range), [typeof(float), typeof(float)])),
+					new CodeMatch(OpCodes.Ldc_R4, 0.5f),
+					new CodeMatch(OpCodes.Cgt))
+				.ThrowIfInvalid("Could not locate the setting of the projectiles spawn pos only flag")
+				.Advance(3);
+			codeMatcher.Instruction.StlocIndex(out var locIndexProjPosFlag);
+			codeMatcher.Advance(1)
+				.Insert(
+					new CodeInstruction(OpCodes.Ldloc, locIndexProjPosFlag),
+					new CodeInstruction(OpCodes.Ldarg_0),
+					new CodeInstruction(OpCodes.Ldarg_1),
+					new CodeInstruction(OpCodes.Call, typeof(EndlessGridPatch).GetMethod(nameof(SetProjPosSpawnFlag), BindingFlags.Static | BindingFlags.NonPublic)),
+					new CodeInstruction(OpCodes.Stloc, locIndexProjPosFlag))
+				.ThrowIfInvalid("Could not inject setting of the proj positions flag");
+
+			return codeMatcher.InstructionEnumeration();
+		}
+
+		private static bool SetProjPosSpawnFlag(bool flag, EndlessGrid self, int target)
+		{
+			int enemyType = (int)self.prefabs.uncommonEnemies[target].enemyType;
+			if (enemyType >= totalVanillaEnemies)
+			{
+				return !CybergrindEntryLoader.GetCustomEntry(enemyType).UncommonMeleePositionsOnly();
+			}
+			return flag;
 		}
 
 		//Add a cap to special enemies
@@ -159,7 +207,7 @@ namespace PurgatorioCyberGrind.Patches
 					new CodeMatch(OpCodes.Ldfld, typeof(PrefabDatabase).GetField(nameof(PrefabDatabase.specialEnemies))),
 					new CodeMatch(OpCodes.Ldloc_S))
 				.ThrowIfInvalid("Could not locate the getting of the special enemies index loc varnum");
-			var locIndexSpecialEnemyIndex = codeMatcher.Operand;
+			codeMatcher.Instruction.LdlocIndex(out var locIndexSpecialEnemyIndex);
 			codeMatcher
 				.MatchForward(true,
 					new CodeMatch(OpCodes.Ldelem_Ref),
@@ -183,7 +231,7 @@ namespace PurgatorioCyberGrind.Patches
 		private static bool GetEnemiesCapSpecials(int num8, EndlessGrid self)
 		{
 			int indexOfEnemyType = self.GetIndexOfEnemyType(self.prefabs.specialEnemies[num8].enemyType);
-			return CapSpecialsAmount(num8, self.spawnedEnemyTypes[indexOfEnemyType].amount, ref self.prefabs, self.currentWave) >= self.spawnedEnemyTypes[indexOfEnemyType].amount;
+			return CapSpecialsAmount(num8, self.spawnedEnemyTypes[indexOfEnemyType].amount, ref self.prefabs, self.currentWave) > self.spawnedEnemyTypes[indexOfEnemyType].amount;
 		}
 
 		public static int CapSpecialsAmount(int target, int amount, ref PrefabDatabase prefabs, int currentWave)
@@ -193,6 +241,25 @@ namespace PurgatorioCyberGrind.Patches
 				return CybergrindEntryLoader.GetCustomEntry((int)prefabs.specialEnemies[target].enemyType).CapNonCommonEnemyAmount(currentWave, amount);
 			}
 			return amount;
+		}
+
+		/// <summary>
+		/// Logs the current filled cybergrind entires, useful for whenever Hakita adds new enemies to the entries without needing to dig through the uk assets
+		/// </summary>
+		/// <param name="prefabs"></param>
+		private static void LogCybergrindEnemyEntries(PrefabDatabase prefabs)
+		{
+			BepInEx.Logging.ManualLogSource log = BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm");
+
+			log.Log(BepInEx.Logging.LogLevel.Info, "The following logs are each cybergrind type and their enemies listed");
+			for (int i = 0; i < prefabs.meleeEnemies.Length; i++)
+				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "melee " + i + " type: " + CybergrindEntryLoader.GetEntryName((int)prefabs.meleeEnemies[i].enemyType));
+			for (int i = 0; i < prefabs.projectileEnemies.Length; i++)
+				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "projectile " + i + " type: " + CybergrindEntryLoader.GetEntryName((int)prefabs.projectileEnemies[i].enemyType));
+			for (int i = 0; i < prefabs.uncommonEnemies.Length; i++)
+				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "uncommon " + i + " type: " + CybergrindEntryLoader.GetEntryName((int)prefabs.uncommonEnemies[i].enemyType));
+			for (int i = 0; i < prefabs.specialEnemies.Length; i++)
+				BepInEx.Logging.Logger.CreateLogSource("Purg Spawn Arm").Log(BepInEx.Logging.LogLevel.Info, "special " + i + " type: " + CybergrindEntryLoader.GetEntryName((int)prefabs.specialEnemies[i].enemyType));
 		}
 	}
 }

@@ -47,5 +47,15 @@ namespace PurgatorioCyberGrind.Systems
 				}
 			}
 		}
+
+		public static string GetEntryName(int entryID)
+		{
+			string name = "";
+			if (entryID < EndlessGridPatch.totalVanillaEnemies)
+				name = ((EnemyType)entryID).ToString();
+			else
+				name = CybergrindEntryLoader.GetCustomEntry(entryID).GetType().Name;
+			return name;
+		}
 	}
 }

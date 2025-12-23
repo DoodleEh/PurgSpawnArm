@@ -1,6 +1,5 @@
 ﻿using PurgatorioCyberGrind.Systems;
 using PurgSpawnArm;
-using UnityEngine;
 
 namespace PurgatorioCyberGrind.CybergrindEntries
 {
@@ -11,22 +10,32 @@ namespace PurgatorioCyberGrind.CybergrindEntries
 			return Plugin.NeutralizerInCybergrind.value;
 		}
 
-		public override void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out GameObject prefab)
+		public override void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out string spawnObjectName)
 		{
 			spawnCost = 55;
 			costIncreasePerSpawn = 0; //Capped at 1 reguardless
 			spawnWave = 19;
-			prefab = Plugin.bundle.LoadAsset<GameObject>("Neutralizer");
+			spawnObjectName = "Neutralizer";
 		}
 
 		public override SpawnTypePosition SetTypePosition()
 		{
-			return new BeforeAllEnemies(CybergrindSpawnType.special);
+			return new AfterSpawnTypeEnemy(CybergrindEnemyCatagories.UncommonEnemies.Idol);
 		}
 
 		public override int CapNonCommonEnemyAmount(int currentWave, int enemyAmount)
 		{
 			return 1;
+		}
+
+		public override bool? CanBeRadiant(EndlessEnemy target, int currentWave, int enemyAmount)
+		{
+			return false;
+		}
+
+		public override bool UncommonMeleePositionsOnly()
+		{
+			return true;
 		}
 	}
 }

@@ -11,12 +11,12 @@ namespace PurgatorioCyberGrind.CybergrindEntries
 			return Plugin.CravenInCybergrind.value;
 		}
 
-		public override void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out GameObject prefab)
+		public override void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out string spawnObjectName)
 		{
 			spawnCost = 20;
 			costIncreasePerSpawn = 15;
 			spawnWave = 18;
-			prefab = Plugin.bundle.LoadAsset<GameObject>("Craven");
+			spawnObjectName = "Craven";
 		}
 
 		public override SpawnTypePosition SetTypePosition()

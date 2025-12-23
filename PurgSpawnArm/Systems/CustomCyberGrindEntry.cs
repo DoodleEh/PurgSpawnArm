@@ -154,6 +154,33 @@ namespace PurgatorioCyberGrind.Systems
 		}
 
 		/// <summary>
+		/// Allows enemies to list whether they can be radiant or not on the cybergrind.
+		/// <br/> Mainly used for enemies that don't or can't have randiant boosts, but can be used for balancing reasons.
+		/// <br/> Returning null allows the cybergrind to execute it's normal logic. Returning true or false will skip all other logic. 
+		/// <br/> Please see EndlessGrid.SpawnRadiant to see the original logic of giving an enemy radiance.
+		/// <br/> Returns null be default.
+		/// </summary>
+		/// <param name="target">The EndlessEnemy data of this entry when being attempted to spawn.</param>
+		/// <param name="currentWave">The current cybergrind wave being spawned.</param>
+		/// <param name="enemyAmount">The amount of the enemy currently spawned.</param>
+		/// <returns>Whether or not the enemy can spawn with radiance on this spawn.</returns>
+		public virtual bool? CanBeRadiant(EndlessEnemy target, int currentWave, int enemyAmount)
+		{
+			return null;
+		}
+
+		/// <summary>
+		/// Whether or not an enemy (that is specified to be in the Uncommon catagory (please see SetTypePosition to set the catagory)) can spawn on a projectile position.
+		/// <br/> Used by stalkers and guttertanks to only spawn on the ground.
+		/// <br/>Returns false by default.
+		/// </summary>
+		/// <returns>Whether or not the enemy only spawns on melee positions.</returns>
+		public virtual bool UncommonMeleePositionsOnly()
+		{
+			return false;
+		}
+
+		/// <summary>
 		/// The settings for the enemy in the cybergrind.
 		/// <br/> Called when setting up the cybergrind prefabs.
 		/// </summary>
@@ -161,7 +188,7 @@ namespace PurgatorioCyberGrind.Systems
 		/// <param name="costIncreasePerSpawn">The additional cost each extra enemy of this type will cost in points.</param>
 		/// <param name="spawnWave">The initial wave the enemy can spawn at.</param>
 		/// <param name="prefab">The gameobject that is spawned.</param>
-		public abstract void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out GameObject prefab);
+		public abstract void SetEntrySettings(out int spawnCost, out int costIncreasePerSpawn, out int spawnWave, out string spawnObjectName);
 
 		/// <summary>
 		/// Used to set what spawn type (common(melee, projectile), uncommon, special) the enemy.
