@@ -1,0 +1,5 @@
+/.vs
+/PurgSpawnArm/bin
+/PurgSpawnArm/obj
+/PurgSpawnArm/Properties
+*.sln
